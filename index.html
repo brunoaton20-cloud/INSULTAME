@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Insultos | Sin Filtro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Space Grotesk & Syne for bold, irreverent typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <!-- Tone.js for procedural sound effects (no external audio URLs needed) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Space Grotesk"', 'sans-serif'],
+                        display: ['"Syne"', 'sans-serif'],
+                    },
+                    colors: {
+                        darkbg: '#09090b',
+                        cardbg: '#121216',
+                        neonpink: '#ff0055',
+                        neonyellow: '#eaff00',
+                        neoncyan: '#00f0ff',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom animations for impact and shake effects */
+        @keyframes impactShake {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            15% { transform: translate(-8px, -6px) rotate(-1.5deg) scale(1.03); }
+            30% { transform: translate(8px, 4px) rotate(1.5deg) scale(1.02); }
+            45% { transform: translate(-6px, 5px) rotate(-1deg) scale(1.01); }
+            60% { transform: translate(6px, -4px) rotate(1deg) scale(1); }
+            75% { transform: translate(-3px, 2px) rotate(-0.5deg); }
+            100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+        }
+
+        .animate-impact {
+            animation: impactShake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+
+        /* Subtle background grid pattern */
+        .bg-grid {
+            background-size: 36px 36px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+
+        /* Neo-brutalist button shadow press effect */
+        .btn-brutal {
+            box-shadow: 0 6px 0 #990033, 0 12px 24px rgba(255, 0, 85, 0.35);
+            transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.2s ease;
+        }
+        .btn-brutal:active {
+            transform: translateY(5px);
+            box-shadow: 0 1px 0 #990033, 0 4px 10px rgba(255, 0, 85, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-darkbg bg-grid text-zinc-100 min-h-screen flex flex-col justify-between selection:bg-neonpink selection:text-white overflow-x-hidden">
+
+    <!-- Top Header & Stats Bar -->
+    <header class="w-full max-w-4xl mx-auto px-4 pt-6 pb-2 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-neonpink flex items-center justify-center text-white font-display font-extrabold text-xl shadow-lg shadow-neonpink/30 rotate-[-3deg]">
+                #!
+            </div>
+            <div>
+                <h1 class="font-display font-extrabold text-lg sm:text-xl tracking-tight leading-none text-white">
+                    BARDERO<span class="text-neonpink">.AI</span>
+                </h1>
+                <p class="text-xs text-zinc-400">Generador de verdades incómodas</p>
+            </div>
+        </div>
+
+        <!-- Controls: Voice Toggle, Sound FX Toggle & Counter -->
+        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Sound FX Toggle -->
+            <button id="sfxToggleBtn" title="Activar/Desactivar sonidos de impacto" class="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 transition flex items-center gap-1.5 text-xs font-medium">
+                <span id="sfxIcon">🔊</span>
+                <span class="hidden sm:inline">FX</span>
+            </button>
+
+            <!-- Auto-Voice Toggle -->
+            <button id="voiceToggleBtn" title="Leer insultos en voz alta automáticamente" class="p-2.5 rounded-xl bg-zinc-900 border border-neoncyan/40 text-neoncyan hover:bg-neoncyan/10 transition flex items-center gap-1.5 text-xs font-bold">
+                <span id="voiceIcon">🗣️</span>
+                <span>Voz: <span id="voiceStatusText">ON</span></span>
+            </button>
+
+            <!-- Insult Counter Badge -->
+            <div class="px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center gap-2">
+                <span class="text-xs text-zinc-400 uppercase tracking-wider font-bold">Daño:</span>
+                <span id="insultCounter" class="font-display font-extrabold text-neonyellow text-base sm:text-lg">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Interactive Area -->
+    <main class="w-full max-w-3xl mx-auto px-4 py-6 flex-1 flex flex-col items-center justify-center gap-6 sm:gap-8">
+        
+        <!-- Intensity Selector Pills -->
+        <div class="w-full max-w-md bg-zinc-900/90 p-1.5 rounded-2xl border border-zinc-800 grid grid-cols-3 gap-1.5 shadow-xl">
+            <button data-level="suave" class="level-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all text-zinc-400 hover:text-white flex items-center justify-center gap-1.5">
+                <span>😏</span> Suave
+            </button>
+            <button data-level="picante" class="level-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-neonpink text-white shadow-md shadow-neonpink/25 flex items-center justify-center gap-1.5">
+                <span>🌶️</span> Picante
+            </button>
+            <button data-level="sin_piedad" class="level-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all text-zinc-400 hover:text-white flex items-center justify-center gap-1.5">
+                <span>💀</span> Sin Piedad
+            </button>
+        </div>
+
+        <!-- Insult Display Card -->
+        <div id="insultCard" class="w-full relative bg-cardbg border-2 border-zinc-800 rounded-3xl p-6 sm:p-10 md:p-12 shadow-2xl transition-colors duration-300 flex flex-col justify-between min-h-[240px] sm:min-h-[280px]">
+            <!-- Decorative Top Tag -->
+            <div class="flex items-center justify-between mb-4">
+                <span id="intensityBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-neonpink/15 text-neonpink border border-neonpink/30">
+                    🌶️ Modo Picante
+                </span>
+                <span class="text-xs font-mono text-zinc-500" id="insultIdTag">#000</span>
+            </div>
+
+            <!-- The Insult Text -->
+            <div class="my-auto py-2">
+                <p id="insultText" class="font-display font-bold text-2xl sm:text-3xl md:text-4xl text-white leading-snug tracking-tight text-center">
+                    ¿Todavía no apretaste el botón? Dale, no tengas miedo, peor que tu cara no va a ser.
+                </p>
+            </div>
+
+            <!-- Card Action Toolbar (Speak again & Copy) -->
+            <div class="mt-6 pt-4 border-t border-zinc-800/80 flex items-center justify-between gap-3">
+                <button id="speakNowBtn" class="px-4 py-2.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 text-xs sm:text-sm font-bold transition flex items-center gap-2 active:scale-95">
+                    <span>🔊</span> Escuchar de nuevo
+                </button>
+
+                <button id="copyBtn" class="px-4 py-2.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 text-xs sm:text-sm font-bold transition flex items-center gap-2 active:scale-95">
+                    <span id="copyIcon">📋</span>
+                    <span id="copyText">Copiar bardeo</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Big Trigger Button -->
+        <div class="w-full max-w-md flex flex-col items-center gap-3">
+            <button id="generateBtn" class="w-full py-5 px-8 rounded-2xl bg-neonpink hover:bg-[#ff1a66] text-white font-display font-extrabold text-xl sm:text-2xl uppercase tracking-wider btn-brutal flex items-center justify-center gap-3 cursor-pointer select-none">
+                <span id="btnEmoji">🔥</span>
+                <span id="btnLabel">¡INSULTAME!</span>
+            </button>
+            <p class="text-xs text-zinc-500 text-center">
+                También podés apretar la <kbd class="px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-300 font-mono">Barra Espaciadora</kbd> si te da el cuero.
+            </p>
+        </div>
+
+    </main>
+
+    <!-- Custom Toast Notification (replaces alert()) -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 translate-y-20 opacity-0 pointer-events-none transition-all duration-300 z-50 bg-neonyellow text-zinc-950 font-bold text-sm px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2">
+        <span>✅</span>
+        <span id="toastMessage">¡Insulto copiado al portapapeles!</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full py-4 px-4 text-center text-xs text-zinc-600">
+        Hecho con pura maldad humorística • 100% libre de filtros reales, solo comedia.
+    </footer>
+
+    <script>
+        /**
+         * Banco de insultos creativos, ingeniosos y humorísticos en español
+         * Divididos por nivel de intensidad para mayor diversión.
+         */
+        const INSULTS_DB = {
+            suave: [
+                "Tenés la misma utilidad que el primer pedazo del pan lactal.",
+                "Sos como una actualización de Windows: aparecés cuando nadie te pidió y encima hacés todo más lento.",
+                "No sos tonto, simplemente tenés muy mala suerte cuando te ponés a pensar.",
+                "Sos la versión de prueba gratuita de una persona interesante.",
+                "Tu carisma tiene menos batería que un celular viejo en pleno invierno.",
+                "Sos como el botón de 'aceptar términos y condiciones': nadie te lee y todos te ignoran.",
+                "Si la pereza fuera un deporte olímpico, mandarías a alguien a buscar la medalla por vos.",
+                "Tenés menos luces que un barco pirata apagado.",
+                "Sos como un paraguas roto en medio de un temporal: estás ahí, pero no servís para nada.",
+                "Tus ideas tienen menos futuro que un vendedor de estufas en el Sahara.",
+                "Sos el equivalente humano a pisar una media mojada en el baño.",
+                "Hablar con vos es como intentar cargar el teléfono con un cable pelado: agotador y sin resultados."
+            ],
+            picante: [
+                "Sos tan lento que te tirás al piso y errás.",
+                "Si te metés en un concurso de boludos, salís segundo por salame.",
+                "Tenés menos reflejos que un espejo de madera, hermano.",
+                "Cuando repartieron el sentido común, vos estabas haciendo fila para pedir dos veces cara de dormido.",
+                "Sos como un semáforo en GTA: estás de adorno y nadie te respeta.",
+                "Tenés el cerebro tan liso que las ideas te patinan como en pista de hielo.",
+                "Sos la prueba viviente de que la evolución a veces pega la vuelta para atrás.",
+                "No te da ni para hacer la 'O' con un vaso, fantasma.",
+                "Sos más pesado que collar de sandías en una maratón.",
+                "Tenés menos chispa que un encendedor mojado en el fondo de un río.",
+                "Si el humo cotizara en bolsa, vos ya serías dueño de medio continente.",
+                "Sos tan amargo que si te caés al mar hacés dulce de leche salado.",
+                "Tenés menos calle que una pantufla de peluche.",
+                "A vos te falta un golpe de horno, dos hervores y cambiar de panadero."
+            ],
+            sin_piedad: [
+                "Sos el motivo por el cual el shampoo trae instrucciones en la botella.",
+                "Tu árbol genealógico debe ser un círculo, porque no se explica tanta falta de neuronas juntas.",
+                "Si tu cerebro fuera dinamita, no te alcanzaría ni para despeinarte las cejas.",
+                "Sos tan difícil de mirar que hasta los espejos te piden que te pongas en modo avión.",
+                "Hay gente que ilumina una habitación al entrar, y después estás vos, que la iluminás cuando te vas.",
+                "Sos el resultado de dejar la evolución en piloto automático y sin supervisión.",
+                "Ni el autocorrector del celular tiene paciencia para intentar entender las pavadas que decís.",
+                "Sos tan irrelevante que si te secuestran, los ladrones pagan para devolverte.",
+                "Tenés tanta cara de lunes a las siete de la mañana que das tristeza hasta los viernes.",
+                "Si la ignorancia diera felicidad, vos vivirías en un carnaval eterno.",
+                "Sos como un archivo corrupto: ocupás espacio al pedo y arruinás todo lo que tocás.",
+                "Tu existencia es el argumento más fuerte a favor de que los extraterrestres no nos quieran visitar."
+            ]
+        };
+
+        // App State
+        let currentLevel = 'picante';
+        let insultCount = 0;
+        let lastInsult = '';
+        let voiceEnabled = true;
+        let sfxEnabled = true;
+        let audioInitialized = false;
+        let synth = null;
+
+        // DOM Elements
+        const insultTextEl = document.getElementById('insultText');
+        const insultCardEl = document.getElementById('insultCard');
+        const generateBtn = document.getElementById('generateBtn');
+        const btnLabel = document.getElementById('btnLabel');
+        const btnEmoji = document.getElementById('btnEmoji');
+        const insultCounterEl = document.getElementById('insultCounter');
+        const insultIdTag = document.getElementById('insultIdTag');
+        const intensityBadge = document.getElementById('intensityBadge');
+        const levelBtns = document.querySelectorAll('.level-btn');
+        const voiceToggleBtn = document.getElementById('voiceToggleBtn');
+        const voiceStatusText = document.getElementById('voiceStatusText');
+        const sfxToggleBtn = document.getElementById('sfxToggleBtn');
+        const sfxIcon = document.getElementById('sfxIcon');
+        const speakNowBtn = document.getElementById('speakNowBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const copyIcon = document.getElementById('copyIcon');
+        const copyText = document.getElementById('copyText');
+        const toastEl = document.getElementById('toast');
+        const toastMessageEl = document.getElementById('toastMessage');
+
+        // Button dynamic labels after first click
+        const buttonPrompts = [
+            "¡DAME OTRO!",
+            "¡SEGUÍ BARDEANDO!",
+            "¿ESO ES TODO?",
+            "¡OTRO MÁS FUERTE!",
+            "¡CASTIGAME!",
+            "¡NO PARES!"
+        ];
+
+        /**
+         * Inicializa Tone.js tras la primera interacción del usuario
+         * para generar un sonido de golpe/impacto limpio sin archivos externos.
+         */
+        async function playImpactSound() {
+            if (!sfxEnabled) return;
+            try {
+                if (!audioInitialized && window.Tone) {
+                    await Tone.start();
+                    synth = new Tone.MembraneSynth({
+                        pitchDecay: 0.04,
+                        octaves: 4,
+                        oscillator: { type: "sine" },
+                        envelope: { attack: 0.001, decay: 0.25, sustain: 0.01, release: 0.4 }
+                    }).toDestination();
+                    synth.volume.value = -6;
+                    audioInitialized = true;
+                }
+                if (synth) {
+                    // Vary pitch slightly by intensity
+                    const note = currentLevel === 'sin_piedad' ? 'C2' : (currentLevel === 'picante' ? 'E2' : 'G2');
+                    synth.triggerAttackRelease(note, "8n");
+                }
+            } catch (err) {
+                console.warn("Audio FX no disponible:", err);
+            }
+        }
+
+        /**
+         * Lee el insulto en voz alta usando Web Speech API en español.
+         */
+        function speakInsult(text) {
+            if (!('speechSynthesis' in window)) return;
+            try {
+                window.speechSynthesis.cancel(); // Cancel any ongoing speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'es-AR'; // Prefer Rioplatense/Latin Spanish if available
+                
+                // Fallback to any Spanish voice if es-AR is not present
+                const voices = window.speechSynthesis.getVoices();
+                const spanishVoice = voices.find(v => v.lang.includes('es-AR')) || 
+                                     voices.find(v => v.lang.includes('es-MX')) || 
+                                     voices.find(v => v.lang.startsWith('es'));
+                if (spanishVoice) {
+                    utterance.voice = spanishVoice;
+                }
+
+                // Adjust pitch and rate based on intensity for comedic effect
+                if (currentLevel === 'sin_piedad') {
+                    utterance.rate = 1.08;
+                    utterance.pitch = 0.88;
+                } else if (currentLevel === 'picante') {
+                    utterance.rate = 1.05;
+                    utterance.pitch = 1.0;
+                } else {
+                    utterance.rate = 0.98;
+                    utterance.pitch = 1.08;
+                }
+
+                window.speechSynthesis.speak(utterance);
+            } catch (e) {
+                console.warn("Síntesis de voz no soportada:", e);
+            }
+        }
+
+        /**
+         * Genera un nuevo insulto sin repetir el anterior de forma consecutiva.
+         */
+        function generateNewInsult() {
+            const pool = INSULTS_DB[currentLevel];
+            let candidate = '';
+            
+            // Ensure no consecutive duplicates
+            do {
+                const randomIndex = Math.floor(Math.random() * pool.length);
+                candidate = pool[randomIndex];
+            } while (candidate === lastInsult && pool.length > 1);
+
+            lastInsult = candidate;
+            insultCount++;
+
+            // Update UI text & counter
+            insultTextEl.textContent = `“${candidate}”`;
+            insultCounterEl.textContent = insultCount;
+            insultIdTag.textContent = `#${String(insultCount).padStart(3, '0')}`;
+
+            // Randomize CTA button text
+            const randomLabel = buttonPrompts[Math.floor(Math.random() * buttonPrompts.length)];
+            btnLabel.textContent = randomLabel;
+            btnEmoji.textContent = currentLevel === 'sin_piedad' ? '💀' : (currentLevel === 'picante' ? '🔥' : '😏');
+
+            // Trigger card impact shake animation
+            insultCardEl.classList.remove('animate-impact');
+            void insultCardEl.offsetWidth; // Force reflow to restart CSS animation
+            insultCardEl.classList.add('animate-impact');
+
+            // Play sound effect & speak if enabled
+            playImpactSound();
+            if (voiceEnabled) {
+                speakInsult(candidate);
+            }
+        }
+
+        /**
+         * Cambia el nivel de intensidad y actualiza estilos visuales.
+         */
+        function setIntensity(level) {
+            currentLevel = level;
+
+            levelBtns.forEach(btn => {
+                const isSelected = btn.dataset.level === level;
+                btn.className = 'level-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ';
+                
+                if (isSelected) {
+                    if (level === 'suave') {
+                        btn.className += 'bg-neoncyan text-zinc-950 shadow-md shadow-neoncyan/25';
+                    } else if (level === 'picante') {
+                        btn.className += 'bg-neonpink text-white shadow-md shadow-neonpink/25';
+                    } else {
+                        btn.className += 'bg-neonyellow text-zinc-950 shadow-md shadow-neonyellow/25';
+                    }
+                } else {
+                    btn.className += 'text-zinc-400 hover:text-white';
+                }
+            });
+
+            // Update card badge & border accent
+            if (level === 'suave') {
+                intensityBadge.innerHTML = '😏 Modo Suave / Sarcástico';
+                intensityBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-neoncyan/15 text-neoncyan border border-neoncyan/30';
+                insultCardEl.style.borderColor = 'rgba(0, 240, 255, 0.35)';
+            } else if (level === 'picante') {
+                intensityBadge.innerHTML = '🌶️ Modo Picante';
+                intensityBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-neonpink/15 text-neonpink border border-neonpink/30';
+                insultCardEl.style.borderColor = 'rgba(255, 0, 85, 0.4)';
+            } else {
+                intensityBadge.innerHTML = '💀 Modo Sin Piedad';
+                intensityBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-neonyellow/15 text-neonyellow border border-neonyellow/30';
+                insultCardEl.style.borderColor = 'rgba(234, 255, 0, 0.45)';
+            }
+        }
+
+        /**
+         * Muestra una notificación flotante temporal.
+         */
+        let toastTimeout;
+        function showToast(msg) {
+            toastMessageEl.textContent = msg;
+            toastEl.classList.remove('translate-y-20', 'opacity-0');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toastEl.classList.add('translate-y-20', 'opacity-0');
+            }, 2200);
+        }
+
+        /**
+         * Copia el insulto actual al portapapeles usando execCommand (compatible con iframes).
+         */
+        function copyCurrentInsult() {
+            const textToCopy = insultTextEl.textContent.replace(/^“|”$/g, '');
+            const tempInput = document.createElement('textarea');
+            tempInput.value = textToCopy;
+            tempInput.style.position = 'fixed';
+            tempInput.style.opacity = '0';
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            try {
+                document.execCommand('copy');
+                copyIcon.textContent = '✅';
+                copyText.textContent = '¡Copiado!';
+                showToast('¡Bardeo copiado para mandárselo a alguien!');
+                setTimeout(() => {
+                    copyIcon.textContent = '📋';
+                    copyText.textContent = 'Copiar bardeo';
+                }, 1800);
+            } catch (err) {
+                showToast('No se pudo copiar el texto.');
+            }
+            document.body.removeChild(tempInput);
+        }
+
+        // Event Listeners
+        generateBtn.addEventListener('click', generateNewInsult);
+
+        levelBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                setIntensity(btn.dataset.level);
+                generateNewInsult();
+            });
+        });
+
+        voiceToggleBtn.addEventListener('click', () => {
+            voiceEnabled = !voiceEnabled;
+            voiceStatusText.textContent = voiceEnabled ? 'ON' : 'OFF';
+            if (voiceEnabled) {
+                voiceToggleBtn.className = 'p-2.5 rounded-xl bg-zinc-900 border border-neoncyan/40 text-neoncyan hover:bg-neoncyan/10 transition flex items-center gap-1.5 text-xs font-bold';
+                showToast('Voz activada');
+            } else {
+                window.speechSynthesis && window.speechSynthesis.cancel();
+                voiceToggleBtn.className = 'p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-zinc-300 transition flex items-center gap-1.5 text-xs font-bold';
+                showToast('Voz silenciada');
+            }
+        });
+
+        sfxToggleBtn.addEventListener('click', () => {
+            sfxEnabled = !sfxEnabled;
+            sfxIcon.textContent = sfxEnabled ? '🔊' : '🔇';
+            sfxToggleBtn.classList.toggle('opacity-50', !sfxEnabled);
+            showToast(sfxEnabled ? 'Sonidos activados' : 'Sonidos desactivados');
+        });
+
+        speakNowBtn.addEventListener('click', () => {
+            const cleanText = insultTextEl.textContent.replace(/^“|”$/g, '');
+            speakInsult(cleanText);
+        });
+
+        copyBtn.addEventListener('click', copyCurrentInsult);
+
+        // Keyboard shortcut: Spacebar triggers a new insult
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && document.activeElement.tagName !== 'BUTTON') {
+                e.preventDefault();
+                generateNewInsult();
+            }
+        });
+
+        // Preload voices on browsers that load them asynchronously
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
+        }
+    </script>
+</body>
+</html>
